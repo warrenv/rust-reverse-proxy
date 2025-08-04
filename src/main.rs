@@ -8,7 +8,6 @@ type HttpClient = Client<hyper::client::HttpConnector>;
 #[tokio::main]
 async fn main() {
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    println!("rev-proxy listening on {:?}", addr);
 
     let client = Client::builder()
         .http1_title_case_headers(true)
@@ -33,25 +32,12 @@ async fn main() {
 }
 
 async fn proxy(_client: HttpClient, req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
-    println!("req: {:?}", req);
-    let headers = req.headers().clone();
-    println!("headers: {:?}", headers);
-
     let path = req.uri().path().to_string();
-    println!("proxy request for path: {:?}", path);
-
-    //    if path.starts_with("/hello") {
-    //        let target_url = "http://127.0.0.1:4000".to_owned();
-    //        let resp = get_response(_client, req, &target_url, &path).await?;
-    //        return Ok(resp);
-    //    }
     let target_url = "http://127.0.0.1:4000".to_owned();
-    let resp = get_response(_client, req, &target_url, &path).await?;
-    println!("resp: {:?}", resp);
-    return Ok(resp);
 
-    //    let resp = Response::new(Body::from("sorry! no route found"));
-    //    Ok(resp)
+    let resp = get_response(_client, req, &target_url, &path).await?;
+
+    Ok(resp)
 }
 
 async fn get_response(
@@ -76,30 +62,37 @@ async fn get_response(
 
     let request_builder = match client.request(head_request_builder).await {
         Ok(resp) => {
-            println!("HEAD resp: {:?}", resp);
-            println!("   status: {:?}", resp.status());
+            println!("HEAD status: {:?}", resp.status());
+
             if resp.status() == 200 {
                 Ok(Request::builder()
                     .method(req.method())
                     .uri(target_url)
                     .body(req.into_body())
                     .unwrap())
-            //} else if resp.status() == 404 {
-            } else {
+            } else if resp.status() == 404 {
                 println!("wordpress 404, send to frontend");
                 Ok(Request::builder()
                     .method(req.method())
                     .uri(fallback_url)
                     .body(req.into_body())
                     .unwrap())
+            } else {
+                Err(Request::builder()
+                    .method(req.method())
+                    .uri(fallback_url)
+                    .body(Body::empty())
+                    .unwrap())
             }
-            //            } else {
-            //                panic!("head not 200 or 404");
-            //            }
         }
         Err(e) => {
-            println!("HEAD fail: {:?}", e);
-            Err(e)
+            println!("ERROR: {:?}", e);
+
+            Err(Request::builder()
+                .method(req.method())
+                .uri(fallback_url)
+                .body(Body::empty())
+                .unwrap())
         }
     };
 
@@ -111,12 +104,11 @@ async fn get_response(
             let body = String::from_utf8(body.to_vec()).unwrap();
 
             let mut resp = Response::new(Body::from(body));
-            //let mut resp = Response::new(Body::from("".to_string()));
             *resp.status_mut() = http::StatusCode::OK;
             Ok(resp)
         }
-        Err(e) => {
-            let mut resp = Response::new(Body::from(e.to_string()));
+        Err(_) => {
+            let mut resp = Response::new(Body::empty());
             *resp.status_mut() = http::StatusCode::BAD_REQUEST;
             Ok(resp)
         }
