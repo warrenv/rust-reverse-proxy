@@ -1,0 +1,9 @@
+# api (rust)
+target/
+
+# local test data
+app-data*/
+
+# config and secrets
+**/.env*
+!.env*.example
