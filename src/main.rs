@@ -60,17 +60,19 @@ async fn get_response(
     target_url: &str,
     path: &str,
 ) -> Result<Response<Body>, hyper::Error> {
-    //    let (parts, body) = req.into_parts();
     let target_url = format!("{}{}", target_url, path);
-    let fallback_url = "http://127.0.0.1:3000".to_owned();
+    let fallback_url = format!("http://127.0.0.1:3000{}", path);
+    let headers = req.headers().clone();
 
-    let empty_body = std::str::from_utf8(&[]).unwrap();
     let head_request_builder = Request::builder()
         .method(http::Method::HEAD)
         .uri(target_url.clone())
-        //.body(req.into_body())
         .body(Body::empty())
         .unwrap();
+
+    // Try a HEAD request to the wordpress server.
+    // If statusCode == 200, make the real request to wordpress.
+    // If statusCode == 404, make a request to the frontend.
 
     let request_builder = match client.request(head_request_builder).await {
         Ok(resp) => {
@@ -84,13 +86,7 @@ async fn get_response(
                     .unwrap())
             //} else if resp.status() == 404 {
             } else {
-                // destructure the request so we can get the body & other parts separately
-                //                let body_bytes = hyper::body::to_bytes(body).await.unwrap();
-                //                let body = std::str::from_utf8(&body_bytes).unwrap();
-                //                //                key = format!("{}{}{}", parts.uri.host().unwrap(), parts.uri.path(), body);
-                //                // reconstruct the Request from parts and the data in `body_bytes`
-                //                req = Request::from_parts(parts, body_bytes.into());
-
+                println!("wordpress 404, send to frontend");
                 Ok(Request::builder()
                     .method(req.method())
                     .uri(fallback_url)
@@ -107,17 +103,9 @@ async fn get_response(
         }
     };
 
-    //    let mut request_builder = Request::builder()
-    //        .method(req.method())
-    //        .uri(target_url)
-    //        .body(req.into_body())
-    //        .unwrap();
-
     match request_builder {
         Ok(mut request_builder) => {
-            //            let headers = req.headers().clone();
-
-            //            *request_builder.headers_mut() = headers;
+            *request_builder.headers_mut() = headers;
             let response = client.request(request_builder).await?;
             let body = hyper::body::to_bytes(response.into_body()).await?;
             let body = String::from_utf8(body.to_vec()).unwrap();
