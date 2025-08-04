@@ -3,11 +3,16 @@ use hyper::{Body, Client, Request, Response, Server};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 
+use crate::configuration::Configuration;
+
+pub mod configuration;
+
 type HttpClient = Client<hyper::client::HttpConnector>;
 
 #[tokio::main]
 async fn main() {
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    let config = Configuration::load().expect("Failed to load configuration from environment");
+    let addr = SocketAddr::from((config.addr(), config.port()));
 
     let client = Client::builder()
         .http1_title_case_headers(true)
