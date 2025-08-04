@@ -1,6 +1,12 @@
 [package]
-name = "foo"
+name = "burp"
 version = "0.1.0"
 edition = "2024"
 
+# Adding http v0.2.12 (available: v1.3.1)
+# Adding hyper v0.14.32 (available: v1.6.0)
+
 [dependencies]
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+http = "0.2"
