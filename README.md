@@ -18,3 +18,6 @@ The frontend app tries to match the route in the following order:
     - Yes, display it.
 
   - Send a 404.
+
+
+- Reference: https://aminshamim.medium.com/building-a-high-performance-http-proxy-server-in-rust-with-hyper-tokio-1fa6145847cb
